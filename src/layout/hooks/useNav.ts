@@ -9,7 +9,7 @@ import { useRouter, useRoute } from "vue-router";
 import { router, remainingPaths } from "@/router";
 import { computed, type CSSProperties } from "vue";
 import { useAppStoreHook } from "@/store/modules/app";
-import { useUserStoreHook } from "@/store/modules/user";
+import { useUserStore } from "@/store/modules/user";
 import { usePermissionStoreHook } from "@/store/modules/permission";
 
 const errorInfo = "当前路由配置不正确，请检查配置";
@@ -31,10 +31,9 @@ export function useNav() {
       overflow: "hidden"
     };
   });
-
   /** 用户名 */
   const username = computed(() => {
-    return useUserStoreHook()?.username;
+    return useUserStore()?.userZhName;
   });
 
   const avatarsStyle = computed(() => {
@@ -67,7 +66,7 @@ export function useNav() {
 
   /** 退出登录 */
   function logout() {
-    useUserStoreHook().logOut();
+    useUserStore().logOut();
   }
 
   function backTopMenu() {

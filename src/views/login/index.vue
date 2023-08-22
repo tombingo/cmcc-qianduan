@@ -1,13 +1,8 @@
 <script setup lang="ts">
 import Motion from "./utils/motion";
-import { useRouter } from "vue-router";
-import { message } from "@/utils/message";
 import { loginRules } from "./utils/rule";
-import { useNav } from "@/layout/hooks/useNav";
 import type { FormInstance } from "element-plus";
 import { useLayout } from "@/layout/hooks/useLayout";
-import { useUserStoreHook } from "@/store/modules/user";
-import { initRouter, getTopMenu } from "@/router/utils";
 import { bg, avatar, illustration } from "./utils/static";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
 import { ref, reactive, toRaw, onMounted, onBeforeUnmount } from "vue";
@@ -18,10 +13,11 @@ import darkIcon from "@/assets/svg/dark.svg?component";
 import Lock from "@iconify-icons/ri/lock-fill";
 import User from "@iconify-icons/ri/user-3-fill";
 
+import { getTpAppList } from "@/api/publicResource";
+import { loginByPassword } from "@/api/login";
 defineOptions({
   name: "Login"
 });
-const router = useRouter();
 const loading = ref(false);
 const ruleFormRef = ref<FormInstance>();
 
@@ -30,29 +26,27 @@ initStorage();
 
 const { dataTheme, dataThemeChange } = useDataThemeChange();
 dataThemeChange();
-const { title } = useNav();
 
 const ruleForm = reactive({
-  username: "admin",
-  password: "admin123"
+  userName: "",
+  password: ""
 });
 
 const onLogin = async (formEl: FormInstance | undefined) => {
   loading.value = true;
   if (!formEl) return;
-  await formEl.validate((valid, fields) => {
+  await formEl.validate(async (valid, fields) => {
     if (valid) {
-      useUserStoreHook()
-        .loginByUsername({ username: ruleForm.username, password: "admin123" })
-        .then(res => {
-          if (res.success) {
-            // 获取后端路由
-            initRouter().then(() => {
-              router.push(getTopMenu(true).path);
-              message("登录成功", { type: "success" });
-            });
-          }
+      try {
+        const res = await loginByPassword({
+          userName: ruleForm.userName,
+          password: ruleForm.password
         });
+        const newUrl = `${choosedApp.value.indexUrl}?accessToken=${res.token}`;
+        window.location.replace(newUrl);
+      } finally {
+        loading.value = false;
+      }
     } else {
       loading.value = false;
       return fields;
@@ -67,8 +61,21 @@ function onkeypress({ code }: KeyboardEvent) {
   }
 }
 
-onMounted(() => {
+const tpAppList = ref<TpApp[]>([]);
+const choosedApp = ref<TpApp>(null);
+
+function chooseApp(num: number) {
+  choosedApp.value = tpAppList.value[num];
+}
+onMounted(async () => {
   window.document.addEventListener("keypress", onkeypress);
+  /**
+   * 加载所有的app列表
+   */
+  tpAppList.value = await getTpAppList();
+  if (tpAppList.value.length > 0) {
+    choosedApp.value = tpAppList.value[0];
+  }
 });
 
 onBeforeUnmount(() => {
@@ -97,7 +104,25 @@ onBeforeUnmount(() => {
         <div class="login-form">
           <avatar class="avatar" />
           <Motion>
-            <h2 class="outline-none">{{ title }}</h2>
+            <h2 class="outline-none">
+              <el-dropdown @command="chooseApp">
+                <el-button type="danger" size="large">
+                  {{ choosedApp == null ? "" : choosedApp.appName }}
+                  <div class="ml-2" />
+                  <IconifyIconOnline icon="ep:arrow-down" />
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item
+                      v-for="(item, key) in tpAppList"
+                      :key="item.appId"
+                      :command="key"
+                      >{{ item.appName }}</el-dropdown-item
+                    >
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </h2>
           </Motion>
 
           <el-form
@@ -115,12 +140,12 @@ onBeforeUnmount(() => {
                     trigger: 'blur'
                   }
                 ]"
-                prop="username"
+                prop="userName"
               >
                 <el-input
                   clearable
-                  v-model="ruleForm.username"
-                  placeholder="账号"
+                  v-model="ruleForm.userName"
+                  placeholder="账号/手机号/邮箱"
                   :prefix-icon="useRenderIcon(User)"
                 />
               </el-form-item>

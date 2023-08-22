@@ -41,9 +41,10 @@ app.component("IconifyIconOnline", IconifyIconOnline);
 app.component("FontIcon", FontIcon);
 
 // 全局注册按钮级别权限组件
+import { PureTable } from "@pureadmin/table";
 import { Auth } from "@/components/ReAuth";
 app.component("Auth", Auth);
-
+app.component("PureTable", PureTable);
 getServerConfig(app).then(async config => {
   app.use(router);
   await router.isReady();
